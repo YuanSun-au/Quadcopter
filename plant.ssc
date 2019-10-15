@@ -1,0 +1,55 @@
+component plant
+%Plant of quadrocopter
+
+inputs
+   ctrl = {[0;0;0;0],'N'}; %Thrust:left
+end
+
+outputs
+    pos = {[0;0;0],'m'}; %Position:right
+    v = {[0;0;0], 'm/s' }; %Velocity:right
+    a = {[0;0;0], 'm/s^2' }; %Acceleration:right
+    angle = {[0.2;0.2;0],'rad'};%Angle:right
+    w = {[0;0;0],'rad/s'};%Angular velocity:right  
+end
+
+parameters
+    m = {0.027,'kg'};%Mass
+    g = {9.81,'m/s^2'};%Gravity
+    d = {0.046,'m'};%Arm length 
+    k = {2.75e-11,'m'};%Drag constant 
+    b = {1e-9,'1'};%Lift constant
+end
+
+parameters(Access=private)    
+    %Moment of inertia matrix
+    Jx = {1.395e-5,'kg*m^2'};
+    Jy = {1.436e-5,'kg*m^2'};
+    Jz = {2.173e-5,'kg*m^2'};
+    J = [Jx,0,0;0,Jy,0;0,0,Jz];
+end
+
+variables(Access=private)
+    R_bi = zeros(3,3);  % rotation matrix
+end
+
+
+equations
+
+    pos.der == v;;
+    v.der == a;
+    angle.der == w;
+    
+    % rotational matrix (takes vectors from inertial to body frame)
+    R_bi == [  cos(angle(3))*cos(angle(2)), cos(angle(1))*sin(angle(3)) + cos(angle(3))*sin(angle(1))*sin(angle(2)), sin(angle(1))*sin(angle(3)) - cos(angle(1))*cos(angle(3))*sin(angle(2));
+           -cos(angle(2))*sin(angle(3)), cos(angle(1))*cos(angle(3)) - sin(angle(1))*sin(angle(3))*sin(angle(2)), cos(angle(3))*sin(angle(1)) + cos(angle(1))*sin(angle(3))*sin(angle(2));
+            sin(angle(2)),                             -cos(angle(2))*sin(angle(1)),                              cos(angle(1))*cos(angle(2))];
+
+    % rotational dynamics
+    J*(w.der) == -cross(w,J*w) + [d/sqrt(2)*(-ctrl(1)-ctrl(2)+ctrl(3)+ctrl(4)) ; d/sqrt(2)*(-ctrl(1)+ctrl(2)+ctrl(3)-ctrl(4)) ; (k/b)*(-ctrl(1)+ctrl(2)-ctrl(3)+ctrl(4))];
+    
+    % translational dynamics
+    %m*a == [0; 0; -m*g] + R_bi' * [0; 0; ctrl(1) + ctrl(2) + ctrl(3) + ctrl(4)];
+    a == {zeros(3,1),'m/s^2'};
+end
+end
